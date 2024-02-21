@@ -1,0 +1,102 @@
+Q1. What are the least popular categories of products sold ?
+
+USE mydb;
+CREATE VIEW Least_Popular_Categories AS
+SELECT D.CategoryID, CategoryName, sum(Transaction_Amount) as Total_Amount
+FROM mydb.order AS A
+INNER JOIN mydb.order_has_product AS B
+ON A.OrderID=B.OrderID
+INNER JOIN mydb.product AS C
+on B.ProductID=C.ProductID
+INNER JOIN mydb.product_category AS D
+on C.CategoryID=D.CategoryID
+GROUP BY D.CategoryID, CategoryName
+ORDER BY Total_Amount ASC;
+
+Q2. Which retail stores have the most amount of sales ?
+
+USE mydb;
+CREATE VIEW Top_Sales_Stores AS
+SELECT E.Store_Name,E.Store_City,E.Store_State, sum(Transaction_Amount) as Total_Amount
+FROM mydb.order AS A
+INNER JOIN mydb.order_has_product AS B
+ON A.OrderID=B.OrderID
+INNER JOIN mydb.product AS C
+on B.ProductID=C.ProductID
+INNER JOIN mydb.store_has_product AS D
+on C.ProductID=D.ProductID
+INNER JOIN mydb.store AS E
+ON D.StoreID=E.StoreID
+GROUP BY E.Store_Name,E.Store_City,E.Store_State
+ORDER BY Total_Amount DESC;
+
+
+Q3. Which payment ID is most and least preferred by students ?
+
+USE mydb;
+CREATE VIEW Payment_Methods AS
+SELECT B.PaymentMethod, COUNT(DISTINCT C.CustomerID) as Total_customers
+FROM mydb.order AS A
+INNER JOIN mydb.payment AS B
+ON A.PaymentID=B.PaymentID
+INNER JOIN mydb.customer AS C
+ON A.CustomerID=C.CustomerID
+GROUP BY B.PaymentMethod
+ORDER BY Total_customers DESC;
+
+
+Q4. Calculate the total number of discounted and undiscounted products purchased and identify which were purchased more?
+
+USE mydb;
+CREATE VIEW Product_Quantities AS
+SELECT sum(CASE WHEN C.DISCOUNTID IS NULL THEN Quantity END) as Number_of_undiscounted_products, sum(CASE WHEN C.DISCOUNTID IS NOT NULL THEN Quantity END) as Number_of_discounted_products
+FROM mydb.order_has_product AS A
+INNER JOIN mydb.Product AS B
+ON A.ProductID=B.productID
+LEFT JOIN mydb.discount AS C
+on B.DiscountID=C.DiscountID;
+
+
+Q5. What is the total number of delivery agents in each state? How does these values compare to the number of delivery agents having maximum rating in each of those states?
+
+USE mydb;
+CREATE VIEW Delivery_Agents_States AS
+SELECT Delivery_State, COUNT(DISTINCT B.Delivery_AgentID) AS total_agents,
+(SELECT COUNT(DISTINCT B2.Delivery_AgentID)
+FROM mydb.delivery AS A2
+INNER JOIN (
+SELECT Delivery_AgentID 
+FROM mydb.delivery_agent AS B2
+WHERE Agent_Rating = (SELECT MAX(Agent_Rating) FROM mydb.delivery_agent)
+) AS B2 
+ON A2.Delivery_AgentID = B2.Delivery_AgentID
+WHERE A2.Delivery_State = A.Delivery_State) AS top_rated_agents
+FROM mydb.delivery AS A
+INNER JOIN mydb.delivery_agent AS B ON A.Delivery_AgentID = B.Delivery_AgentID
+GROUP BY Delivery_State
+ORDER BY total_agents DESC;
+
+
+Q6. How many deliveries were COMPLETED where the estimated delivery time (EDT) is greater than the average EDT of all the completed deliveries?
+
+USE mydb;
+CREATE VIEW Delayed_Deliveries AS
+SELECT COUNT(DISTINCT DeliveryID) AS no_of_delayed_deliveries 
+FROM 
+( SELECT DeliveryID, EstimatedDeliveryTime_mins, Delivery_Status FROM  mydb.delivery WHERE Delivery_Status ='Completed') AS A
+where EstimatedDeliveryTime_mins > (SELECT TRUNCATE(AVG(EstimatedDeliveryTime_mins),2) AS Avg_ETA  from mydb.delivery);
+
+
+Q7. Which state has the most number of delayed deliveries (wherein the EDT is greater than the average EDT) ?
+
+USE mydb;
+CREATE VIEW States_Delayed_Deliveries AS
+SELECT Delivery_State, COUNT(DISTINCT DeliveryID) AS no_of_delayed_deliveries FROM 
+( SELECT DeliveryID, EstimatedDeliveryTime_mins, Delivery_State FROM  mydb.delivery WHERE Delivery_Status ='Completed') AS A
+where EstimatedDeliveryTime_mins > (SELECT TRUNCATE(AVG(EstimatedDeliveryTime_mins),2) AS Avg_ETA  from mydb.delivery)
+GROUP BY Delivery_State
+ORDER BY no_of_delayed_deliveries DESC;
+
+
+
+
